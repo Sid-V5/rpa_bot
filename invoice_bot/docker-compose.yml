@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  invoice_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rpa_invoice_bot_container
+    volumes:
+      # Mount the current directory into the container's /app directory
+      # This allows the bot to access config.yaml, src/, etc.
+      - .:/app
+      # Mount specific directories for input, output, and logs
+      - ./sample_invoices:/app/sample_invoices
+      - ./output:/app/output
+      - ./logs:/app/logs
+    environment:
+      # Example: Set environment variables for email credentials
+      # These should be set securely in production, e.g., using Docker secrets or orchestrator secrets
+      - SENDER_EMAIL=${SENDER_EMAIL}
+      - SENDER_PASSWORD=${SENDER_PASSWORD}
+    # If you want to run the GUI in a Docker container, you'd need an X-server setup,
+    # which is complex. For this bot, we assume the GUI runs locally or the bot runs headless.
+    # If running headless, you might change the CMD in Dockerfile to run a CLI version of main.py
+    # or a specific processing script.
+    # For local GUI testing, you would typically run `python src/main.py` directly on your host.
+    # This docker-compose is primarily for building and running the core logic/headless processing.
+    # command: python src/main.py # Uncomment if you want to override CMD in Dockerfile

@@ -1,0 +1,9 @@
+pdfplumber
+easyocr>=1.7.0
+torch>=1.13.0
+Pillow
+regex
+pandas
+pyyaml
+reportlab
+numpy
