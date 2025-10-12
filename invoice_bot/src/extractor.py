@@ -89,7 +89,7 @@ class Extractor:
                     'text': ocr_text,
                     'extraction_method': 'OCR',
                     'text_length': len(ocr_text),
-                    'confidence_score': 'OCR_COMPLETED'  # EasyOCR doesn't provide overall confidence
+                    'confidence_score': 'OCR_COMPLETED'  
                 })
                 return extraction_result
             else:

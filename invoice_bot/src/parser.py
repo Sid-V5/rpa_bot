@@ -104,9 +104,9 @@ class Parser:
         try:
             # Heuristic 1: Check the first few lines for a likely company name
             lines = [line.strip() for line in text.split('\n') if line.strip()]
-            for line in lines[:5]: # Check the first 5 non-empty lines
+            for line in lines[:5]: 
                 words = line.split()
-                # A good candidate is short, capitalized, and not a generic invoice term
+                
                 if 1 <= len(words) <= 4 and line.isupper() and not any(keyword in line.lower() for keyword in ['invoice', 'bill', 'receipt', 'inc.', 'ltd.']):
                     logger.debug(f"Found potential vendor '{line}' using top-line heuristic.")
                     return line
