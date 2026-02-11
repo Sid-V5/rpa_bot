@@ -79,14 +79,6 @@ docker build -t rpa-invoice-bot .
 docker run -v "$(pwd)/samples:/app/samples" -v "$(pwd)/output:/app/output" -v "$(pwd)/logs:/app/logs" rpa-invoice-bot
 ```
 
-## Configuration
-
-Edit `config.yaml` to customize settings:
-
-- **Paths**: Input/output directories
-- **Email**: SMTP settings and thresholds
-- **OCR**: Language models and retry settings
-
 ## Dependencies
 
 - Python 3.10+
