@@ -133,9 +133,15 @@ class Extractor:
         try:
             with pdfplumber.open(pdf_path) as pdf:
                 for i, page in enumerate(pdf.pages):
-                    logger.debug(f"Performing OCR on page {i+1} of {pdf_path}")
+                    logger.info(f"Performing OCR on page {i+1} of {pdf.pages} ({pdf_path})")
                     # Render page to a Pillow Image object
-                    pil_image = page.to_image(resolution=300).original
+                    # Higher resolution for better OCR
+                    img_res = 300
+                    logger.debug(f"Rendering page {i+1} at {img_res} DPI")
+                    pil_image = page.to_image(resolution=img_res).original
+                    
+                    if pil_image.size[0] < 500 or pil_image.size[1] < 500:
+                        logger.warning(f"Warning: Low image dimensions ({pil_image.size}) for page {i+1}. Result might be poor.")
 
                     # Convert PIL image to numpy array for EasyOCR
                     import numpy as np
@@ -164,5 +170,4 @@ class Extractor:
             logger.debug(f"Successfully extracted text using EasyOCR from {pdf_path}")
         except Exception as e:
             logger.error(f"Error during EasyOCR extraction from {pdf_path}: {e}", exc_info=True)
-            # Don't disable OCR for EasyOCR - it's self-contained and shouldn't have installation issues
         return full_ocr_text
