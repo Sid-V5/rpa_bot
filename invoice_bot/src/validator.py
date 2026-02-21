@@ -66,9 +66,19 @@ class Validator:
 
     def parse_date(self, date_str: str):
         """Try parsing a date string with multiple formats."""
-        for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d"):
+        # Clean potential noise for easier parsing
+        clean_date = date_str.strip()
+        
+        # Extended formats for hobbyist use (e.g., 12 Jan 2024, May 05 2023)
+        formats = (
+            "%d/%m/%Y", "%m/%d/%Y", "%Y-%m-%d", 
+            "%d-%b-%Y", "%d %b %Y", "%b %d %Y",
+            "%d %B %Y", "%B %d %Y", "%d/%m/%y"
+        )
+        
+        for fmt in formats:
             try:
-                return datetime.strptime(date_str, fmt)
+                return datetime.strptime(clean_date, fmt)
             except ValueError:
                 continue
         return None
