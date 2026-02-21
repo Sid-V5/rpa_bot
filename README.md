@@ -51,6 +51,21 @@ Edit `config.yaml` to customize:
 - Regex patterns for data extraction
 - Validation thresholds
 
+## Troubleshooting & Tips
+
+### OCR Not Working?
+- Make sure you have `Tesseract` installed if using external OCR tools.
+- Scanned PDFs should be at least 300 DPI for best results.
+- If the bot skips a PDF, check `logs/bot.log` for details on extraction failure.
+
+### Permission Errors
+- Ensure the `output/` and `logs/` folders are writable.
+- On Windows, avoid running the bot from restricted folders like `Program Files`.
+
+### Customizing Extraction
+- If the vendor or amount isn't being picked up, check the `regex_patterns` in `config.yaml`.
+- You can test your patterns on [regex101.com](https://regex101.com).
+
 ## Sample Data
 
 The `samples/invoices/` folder contains 6 sample PDF files with various formats and validation scenarios:
