@@ -8,7 +8,8 @@ import sys
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import QueueHandler, QueueListener
-import time
+from queue import Queue
+from multiprocessing import cpu_count
 from typing import Dict, Any, Callable, List
 
 try:
@@ -36,7 +37,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         sys.exit(1)
 
 # --- Logging Setup ---
-def setup_logging(log_file_path: str) -> tuple[logging.Logger, QueueListener]:
+def setup_logging(log_file_path: str) -> tuple:
     """Sets up process-safe logging for the application."""
     log_queue = Queue(-1)
 
@@ -116,8 +117,6 @@ def process_single_invoice(pdf_path: str, config: Dict[str, Any]) -> Dict[str, A
     validated_data["validation_details"] = validator.get_validation_summary(parsed_data, validated_data)
     return validated_data
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
 def run_bot_logic(invoice_files: List[str], use_ocr: bool, update_progress_callback: Callable[[int, int, str], None], config: Dict[str, Any]):
     """
     Orchestrates the entire invoice processing workflow for a list of files.
@@ -161,7 +160,8 @@ def run_bot_logic(invoice_files: List[str], use_ocr: bool, update_progress_callb
     update_progress_callback(total_pdfs, total_pdfs, "All invoices processed. Report generated.")
     logger.info("Invoice processing completed.")
 
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
+current_dir = os.path.dirname(__file__)
+CONFIG_FILE = os.path.join(current_dir, "..", "config.yaml")
 
 def main():
     """Main entry point for the RPA Invoice Processing Bot."""
@@ -169,7 +169,10 @@ def main():
     config = load_config(CONFIG_FILE)
 
     # Setup logging
-    log_file_path = os.path.join(os.path.dirname(__file__), "..", config['paths']['log_file_path'])
+    log_file_path = os.path.join(current_dir, "..", config['paths']['log_file_path'])
+    # Ensure log directory exists
+    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+    
     logger, listener = setup_logging(log_file_path)
 
     try:
@@ -181,7 +184,7 @@ def main():
         # Create and run the GUI
         root = tk.Tk()
         initial_ocr_setting = config.get('ocr', {}).get('enabled', True)
-        app = InvoiceBotGUI(root, bot_logic_callback, initial_ocr_setting)
+        app = InvoiceBotGUI(root, bot_logic_callback, initial_ocr_setting, config)
         root.mainloop()
         logger.info("Application closed.")
 
