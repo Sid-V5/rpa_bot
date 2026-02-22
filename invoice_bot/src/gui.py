@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox, ttk
 import threading
 import logging
 import os
+import subprocess
 from typing import Callable, List
 
 logger = logging.getLogger(__name__)
@@ -13,13 +14,14 @@ class InvoiceBotGUI:
     A Tkinter-based GUI for the RPA Invoice Processing Bot.
     Allows users to select invoice files, start processing, and view progress.
     """
-    def __init__(self, master: tk.Tk, start_processing_callback: Callable[[List[str], bool, Callable[[int, int, str], None]], None], initial_ocr_enabled: bool):
+    def __init__(self, master: tk.Tk, start_processing_callback: Callable[[List[str], bool, Callable[[int, int, str], None]], None], initial_ocr_enabled: bool, config: dict):
         self.master = master
         self.master.title("RPA Invoice Processing Bot")
-        self.master.geometry("600x450") # Increased height for new widget
+        self.master.geometry("600x500") # Increased height for more buttons
         self.master.resizable(False, False)
 
         self.start_processing_callback = start_processing_callback
+        self.config = config
         self.invoice_files = []
         self.ocr_enabled_var = tk.BooleanVar(value=initial_ocr_enabled)
 
@@ -53,8 +55,15 @@ class InvoiceBotGUI:
         )
         self.ocr_checkbutton.pack(pady=5)
 
-        self.start_button = ttk.Button(control_frame, text="Start Processing", command=self._start_bot_thread)
-        self.start_button.pack(pady=10)
+        # Button container
+        btn_container = ttk.Frame(control_frame)
+        btn_container.pack(pady=10)
+
+        self.start_button = ttk.Button(btn_container, text="Start Processing", command=self._start_bot_thread)
+        self.start_button.pack(side="left", padx=5)
+
+        self.open_output_button = ttk.Button(btn_container, text="Open Output Folder", command=self._open_output_folder)
+        self.open_output_button.pack(side="left", padx=5)
 
         # Progress bar
         self.progress_label = ttk.Label(control_frame, text="Progress: 0/0 invoices processed")
@@ -67,7 +76,12 @@ class InvoiceBotGUI:
         log_frame = ttk.LabelFrame(self.master, text="Bot Log", padding="10")
         log_frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.log_text = tk.Text(log_frame, height=10, state="disabled", wrap="word")
+        log_btn_frame = ttk.Frame(log_frame)
+        log_btn_frame.pack(side="top", fill="x", pady=(0, 5))
+        
+        ttk.Button(log_btn_frame, text="Clear Logs", command=self._clear_logs).pack(side="right")
+
+        self.log_text = tk.Text(log_frame, height=8, state="disabled", wrap="word")
         self.log_text.pack(side="left", fill="both", expand=True)
 
         log_scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
@@ -78,7 +92,32 @@ class InvoiceBotGUI:
         self.log_handler = GUILogHandler(self.log_text)
         self.log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         logging.getLogger().addHandler(self.log_handler)
-        logging.getLogger().setLevel(logging.INFO) # Set default logging level for GUI
+        logging.getLogger().setLevel(logging.INFO)
+
+    def _open_output_folder(self):
+        """Opens the output directory in the system file explorer."""
+        output_path = self.config.get('paths', {}).get('output_report_path', 'output/')
+        output_dir = os.path.dirname(output_path) or 'output'
+        
+        full_path = os.path.abspath(output_dir)
+        if not os.path.exists(full_path):
+            os.makedirs(full_path, exist_ok=True)
+            
+        try:
+            if os.name == 'nt': # Windows
+                os.startfile(full_path)
+            elif os.name == 'posix': # macOS/Linux
+                subprocess.run(['open' if sys.platform == 'darwin' else 'xdg-open', full_path])
+            logger.info(f"Opened output folder: {full_path}")
+        except Exception as e:
+            logger.error(f"Failed to open output folder: {e}")
+
+    def _clear_logs(self):
+        """Clears the log text area."""
+        self.log_text.config(state="normal")
+        self.log_text.delete(1.0, tk.END)
+        self.log_text.config(state="disabled")
+        logger.info("GUI logs cleared.")
 
     def _browse_files(self):
         """
@@ -87,7 +126,7 @@ class InvoiceBotGUI:
         files_selected = filedialog.askopenfilenames(
             title="Select PDF Invoices",
             filetypes=[("PDF Files", "*.pdf")],
-            initialdir=os.path.join(os.getcwd(), "sample_invoices")
+            initialdir=os.getcwd()
         )
         if files_selected:
             self.invoice_files = files_selected
@@ -108,23 +147,19 @@ class InvoiceBotGUI:
         self.start_button.config(state="disabled", text="Processing...")
         self.progress_bar["value"] = 0
         self.progress_label.config(text="Progress: 0/0 invoices processed")
-        self.log_text.config(state="normal")
-        self.log_text.delete(1.0, tk.END)
-        self.log_text.config(state="disabled")
-        logger.info("Bot processing started.")
+        self._clear_logs()
 
         # Start the processing in a new thread
         use_ocr = self.ocr_enabled_var.get()
         logger.info(f"Starting processing with OCR enabled: {use_ocr}")
         processing_thread = threading.Thread(target=self.start_processing_callback,
                                              args=(self.invoice_files, use_ocr, self._update_progress))
-        processing_thread.daemon = True # Allow the thread to exit with the main program
+        processing_thread.daemon = True
         processing_thread.start()
 
     def _update_progress(self, current: int, total: int, message: str):
         """
         Updates the GUI progress bar and label.
-        This method is called from the processing thread and must be marshaled to the main Tkinter thread.
         """
         self.master.after(0, self.__update_progress_gui, current, total, message)
 
@@ -143,7 +178,7 @@ class InvoiceBotGUI:
             self.start_button.config(state="normal", text="Start Processing")
             messagebox.showinfo("Processing Complete", "Invoice processing finished!")
             logger.info("Bot processing finished.")
-        elif total == 0 and current == 0 and "finished" in message.lower(): # Case for no PDFs found
+        elif total == 0 and current == 0 and "finished" in message.lower():
             self.start_button.config(state="normal", text="Start Processing")
             messagebox.showinfo("Processing Complete", "No PDF invoices found to process.")
             logger.info("Bot processing finished (no PDFs found).")
@@ -164,5 +199,5 @@ class GUILogHandler(logging.Handler):
     def _insert_log_message(self, msg):
         self.text_widget.config(state="normal")
         self.text_widget.insert(tk.END, msg + "\n")
-        self.text_widget.see(tk.END) # Auto-scroll to the end
+        self.text_widget.see(tk.END)
         self.text_widget.config(state="disabled")
